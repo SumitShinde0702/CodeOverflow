@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= question.title %> - CodeOverflow</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <%- include('../partials/navbar') %>
+
+    <div class="container-fluid bg-dark text-white min-vh-100">
+        <div class="container py-5">
+            <!-- Question -->
+            <div class="card bg-secondary border-0 shadow-lg mb-4">
+                <div class="card-body">
+                    <div class="d-flex">
+                        <!-- Voting -->
+                        <div class="vote-buttons text-center me-3">
+                            <form action="/questions/<%= question._id %>/upvote" method="POST">
+                                <button type="submit" 
+                                        class="btn <%= question.upvotes && question.upvotes.map(id => id.toString()).includes(userId) ? 'btn-primary' : 'btn-outline-light' %> btn-sm mb-1">
+                                    <i class="fas fa-chevron-up"></i>
+                                </button>
+                            </form>
+                            <div class="vote-count my-1">
+                                <%= (question.upvotes ? question.upvotes.length : 0) - (question.downvotes ? question.downvotes.length : 0) %>
+                            </div>
+                            <form action="/questions/<%= question._id %>/downvote" method="POST">
+                                <button type="submit" 
+                                        class="btn <%= question.downvotes && question.downvotes.map(id => id.toString()).includes(userId) ? 'btn-danger' : 'btn-outline-light' %> btn-sm">
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Question Content -->
+                        <div class="flex-grow-1">
+                            <h2 class="mb-3"><%= question.title %></h2>
+                            <p class="text-light"><%= question.body %></p>
+                            
+                            <!-- Tags -->
+                            <div class="mb-3">
+                                <% (question.tags || []).forEach(tag => { %>
+                                    <span class="badge bg-primary me-1"><%= tag %></span>
+                                <% }) %>
+                            </div>
+
+                            <!-- Author info -->
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <div class="d-flex align-items-center">
+                                    <a href="/users/<%= question.userId %>" class="text-decoration-none">
+                                        <img src="<%= question.author?.profilePicture ? '/' + question.author.profilePicture : '/images/default-profile.png' %>" 
+                                             alt="Profile" 
+                                             class="rounded-circle me-2"
+                                             style="width: 32px; height: 32px; object-fit: cover;"
+                                             onerror="this.src='/images/default-profile.png'">
+                                        <span class="text-light"><%= question.authorName %></span>
+                                    </a>
+                                    <span class="text-light ms-2">
+                                        <i class="far fa-clock me-1"></i>
+                                        <%= new Date(question.createdAt).toLocaleString() %>
+                                    </span>
+                                </div>
+
+                                <% if (userId === question.userId.toString()) { %>
+                                    <div class="btn-group">
+                                        <a href="/questions/<%= question._id %>/edit" class="btn btn-outline-light btn-sm">
+                                            <i class="fas fa-edit me-1"></i>Edit
+                                        </a>
+                                        <form action="/questions/<%= question._id %>/delete" method="POST" class="d-inline">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete this question?')">
+                                                <i class="fas fa-trash me-1"></i>Delete
+                                            </button>
+                                        </form>
+                                    </div>
+                                <% } %>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Answers Section -->
+            <h3 class="mb-4"><i class="fas fa-comments me-2"></i><%= answers.length %> Answers</h3>
+            
+            <!-- Answer Form -->
+            <div class="card bg-secondary border-0 shadow-lg mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Your Answer</h5>
+                    <form action="/answers/<%= question._id %>/answers" method="POST">
+                        <div class="mb-3">
+                            <textarea class="form-control bg-dark text-white" 
+                                      name="body" rows="4" required
+                                      placeholder="Write your answer here..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane me-2"></i>Post Answer
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Answers List -->
+            <div class="answers-list">
+                <% answers.forEach(answer => { %>
+                    <div class="card bg-secondary border-0 shadow-lg mb-3">
+                        <div class="card-body">
+                            <div class="d-flex">
+                                <!-- Answer Voting -->
+                                <div class="vote-buttons text-center me-3">
+                                    <form action="/answers/<%= answer._id %>/upvote" method="POST">
+                                        <button type="submit" 
+                                                class="btn <%= answer.upvotes && answer.upvotes.map(id => id.toString()).includes(userId) ? 'btn-primary' : 'btn-outline-light' %> btn-sm mb-1">
+                                            <i class="fas fa-chevron-up"></i>
+                                        </button>
+                                    </form>
+                                    <div class="vote-count my-1">
+                                        <%= (answer.upvotes ? answer.upvotes.length : 0) - (answer.downvotes ? answer.downvotes.length : 0) %>
+                                    </div>
+                                    <form action="/answers/<%= answer._id %>/downvote" method="POST">
+                                        <button type="submit" 
+                                                class="btn <%= answer.downvotes && answer.downvotes.map(id => id.toString()).includes(userId) ? 'btn-danger' : 'btn-outline-light' %> btn-sm">
+                                            <i class="fas fa-chevron-down"></i>
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Answer Content -->
+                                <div class="flex-grow-1">
+                                    <p class="text-light"><%= answer.body %></p>
+                                    
+                                    <!-- Answer Author Info -->
+                                    <div class="d-flex justify-content-between align-items-center mt-3">
+                                        <div class="d-flex align-items-center">
+                                            <a href="/users/<%= answer.userId %>" class="text-decoration-none">
+                                                <img src="<%= answer.author?.profilePicture ? '/' + answer.author.profilePicture : '/images/default-profile.png' %>" 
+                                                     alt="Profile" 
+                                                     class="rounded-circle me-2"
+                                                     style="width: 24px; height: 24px; object-fit: cover;"
+                                                     onerror="this.src='/images/default-profile.png'">
+                                                <span class="text-light"><%= answer.authorName %></span>
+                                            </a>
+                                            <span class="text-light ms-2">
+                                                <i class="far fa-clock me-1"></i>
+                                                <%= new Date(answer.createdAt).toLocaleString() %>
+                                            </span>
+                                        </div>
+
+                                        <% if (userId === answer.userId.toString()) { %>
+                                            <div class="btn-group">
+                                                <a href="/answers/<%= answer._id %>/edit" class="btn btn-outline-light btn-sm">
+                                                    <i class="fas fa-edit me-1"></i>Edit
+                                                </a>
+                                                <form action="/answers/<%= answer._id %>/delete" method="POST" class="d-inline">
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete this answer?')">
+                                                        <i class="fas fa-trash me-1"></i>Delete
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <% }) %>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

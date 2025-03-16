@@ -1,0 +1,32 @@
+<!-- views/answers.ejs -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Answers</title>
+</head>
+<body>
+    <h1>Answers</h1>
+    <ul>
+        <% answers.forEach(answer => { %>
+            <li>
+                <p><%= answer.body %></p>
+                <form action="/answers/upvote" method="POST">
+                    <input type="hidden" name="answerId" value="<%= answer.id %>">
+                    <button type="submit">Upvote</button>
+                </form>
+                <form action="/answers/downvote" method="POST">
+                    <input type="hidden" name="answerId" value="<%= answer.id %>">
+                    <button type="submit">Downvote</button>
+                </form>
+            </li>
+        <% }) %>
+    </ul>
+    <form action="/answers" method="POST">
+        <label for="body">Answer:</label>
+        <textarea id="body" name="body" required></textarea>
+        <button type="submit">Post Answer</button>
+    </form>
+</body>
+</html>

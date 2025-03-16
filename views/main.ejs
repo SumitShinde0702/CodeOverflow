@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeOverflow - Where Coders Help Coders</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .code-animation {
+            font-family: monospace;
+            overflow: hidden;
+            border-right: .15em solid orange;
+            white-space: nowrap;
+            margin: 0 auto;
+            letter-spacing: .15em;
+            animation: 
+                typing 3.5s steps(40, end),
+                blink-caret .75s step-end infinite;
+        }
+
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 100% }
+        }
+
+        @keyframes blink-caret {
+            from, to { border-color: transparent }
+            50% { border-color: orange; }
+        }
+
+        .floating {
+            animation: floating 3s ease-in-out infinite;
+        }
+
+        @keyframes floating {
+            0% { transform: translate(0, 0px); }
+            50% { transform: translate(0, 15px); }
+            100% { transform: translate(0, -0px); }
+        }
+
+        .bug-fix {
+            animation: bug-fixing 5s linear infinite;
+            position: relative;
+        }
+
+        @keyframes bug-fixing {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100vw); }
+        }
+
+        .gradient-text {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="bg-dark text-light">
+    <div class="container-fluid min-vh-100 d-flex flex-column">
+        <!-- Header -->
+        <nav class="navbar navbar-dark bg-dark border-bottom border-secondary">
+            <div class="container">
+                <a class="navbar-brand" href="/">
+                    <i class="fas fa-code me-2"></i>CodeOverflow
+                </a>
+                <div>
+                    <a href="/login" class="btn btn-outline-light me-2">Login</a>
+                    <a href="/register" class="btn btn-primary">Register</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="container flex-grow-1 py-5">
+            <div class="row align-items-center h-100">
+                <div class="col-md-6">
+                    <h1 class="display-4 mb-4 gradient-text">
+                        Where bugs come to die 🪲
+                    </h1>
+                    <div class="code-animation mb-4" style="width: fit-content">
+                        <code>while(coding) { helpOthers(); }</code>
+                    </div>
+                    <p class="lead mb-4">
+                        Join our community of developers helping each other squash bugs, 
+                        share knowledge, and occasionally argue about tabs vs spaces.
+                    </p>
+                    <div class="d-flex gap-3">
+                        <a href="/register" class="btn btn-primary btn-lg">
+                            <i class="fas fa-user-plus me-2"></i>Join the Debug Squad
+                        </a>
+                        <a href="/login" class="btn btn-outline-light btn-lg">
+                            <i class="fas fa-sign-in-alt me-2"></i>Return to Code
+                        </a>
+                    </div>
+                    <div class="mt-2 text-light opacity-75 small">
+                        <span class="me-4">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Non-coders welcome! (This means Register 😉)
+                        </span>
+                        <span>
+                            <i class="fas fa-info-circle me-1"></i>
+                            Human translation: Log In
+                        </span>
+                    </div>
+                </div>
+                <div class="col-md-6 text-center">
+                    <div class="floating">
+                        <i class="fas fa-laptop-code" style="font-size: 150px; color: #4ecdc4;"></i>
+                    </div>
+                    <div class="bug-fix position-absolute" style="bottom: 20%;">
+                        <i class="fas fa-bug" style="font-size: 24px; color: #ff6b6b;"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features -->
+            <div class="row mt-5 pt-5 g-4">
+                <div class="col-md-4">
+                    <div class="card bg-secondary border-0">
+                        <div class="card-body text-center">
+                            <i class="fas fa-question-circle mb-3" style="font-size: 48px;"></i>
+                            <h3>Ask Questions</h3>
+                            <p>Because the only bad question is the one you didn't ask 
+                               (and maybe some SQL queries)</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-secondary border-0">
+                        <div class="card-body text-center">
+                            <i class="fas fa-hands-helping mb-3" style="font-size: 48px;"></i>
+                            <h3>Get Help</h3>
+                            <p>From people who've already made the mistakes you're about to make</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-secondary border-0">
+                        <div class="card-body text-center">
+                            <i class="fas fa-trophy mb-3" style="font-size: 48px;"></i>
+                            <h3>Level Up</h3>
+                            <p>Turn coffee into code, and code into solutions</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="bg-dark border-top border-secondary py-4">
+            <div class="container text-center">
+                <p class="mb-0">
+                    <i class="fas fa-heart text-danger me-2"></i>
+                    Made with love and probably too much coffee by Sumit :)
+                </p>
+                <small class="text-muted">
+                    © <%= new Date().getFullYear() %> CodeOverflow - No bugs were harmed in the making of this site
+                </small>
+            </div>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
