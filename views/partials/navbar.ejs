@@ -1,8 +1,9 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+<nav class="navbar navbar-expand-lg navbar-dark border-bottom border-secondary">
     <div class="container">
         <!-- Brand -->
         <a class="navbar-brand" href="/">
-            <i class="fas fa-code me-2"></i>CodeOverflow
+            <i class="fas fa-code me-2"></i>
+            <span class="brand-text">CodeOverflow</span>
         </a>
 
         <!-- Toggle button for mobile -->
@@ -15,7 +16,12 @@
             <ul class="navbar-nav me-auto">
                 <li class="nav-item">
                     <a class="nav-link" href="/questions">
-                        <i class="fas fa-question-circle me-1"></i>Questions
+                        <i class="fas fa-question-circle me-2"></i>Questions
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/users">
+                        <i class="fas fa-users me-2"></i>Users
                     </a>
                 </li>
             </ul>
@@ -23,8 +29,8 @@
             <!-- Search bar -->
             <form class="d-flex me-3">
                 <div class="input-group">
-                    <input class="form-control" type="search" placeholder="Search questions...">
-                    <button class="btn btn-outline-light" type="submit">
+                    <input class="form-control search-input" type="search" placeholder="Search questions...">
+                    <button class="btn btn-primary" type="submit">
                         <i class="fas fa-search"></i>
                     </button>
                 </div>
@@ -33,26 +39,124 @@
             <!-- User menu -->
             <% if (userId) { %>
                 <div class="dropdown">
-                    <button class="btn btn-dark dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <i class="fas fa-user me-1"></i>Account
+                    <button class="btn btn-dark dropdown-toggle user-btn" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user me-2"></i>Account
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end bg-dark">
+                    <ul class="dropdown-menu dropdown-menu-end">
                         <li>
-                            <a class="dropdown-item text-light" href="/users/profile">
+                            <a class="dropdown-item" href="/users/profile">
                                 <i class="fas fa-user-circle me-2"></i>Profile
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item text-light" href="/logout">
+                            <a class="dropdown-item" href="/logout">
                                 <i class="fas fa-sign-out-alt me-2"></i>Logout
                             </a>
                         </li>
                     </ul>
                 </div>
             <% } else { %>
-                <a href="/login" class="btn btn-outline-light me-2">Login</a>
+                <a href="/login" class="btn btn-outline-primary me-2">Login</a>
                 <a href="/register" class="btn btn-primary">Register</a>
             <% } %>
         </div>
     </div>
-</nav> 
+</nav>
+
+<style>
+.navbar {
+    background-color: #161b22 !important;
+    padding: 1rem 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.navbar-brand {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #e6edf3 !important;
+}
+
+.brand-text {
+    background: linear-gradient(45deg, #3498db, #2ecc71);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.nav-link {
+    color: #8b949e !important;
+    font-size: 1rem;
+    padding: 0.5rem 1rem !important;
+    transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+    color: #e6edf3 !important;
+}
+
+.nav-link.active {
+    color: #3498db !important;
+}
+
+.search-input {
+    background-color: #21262d !important;
+    border: 1px solid #30363d !important;
+    color: #e6edf3 !important;
+    min-width: 250px;
+}
+
+.search-input:focus {
+    box-shadow: none !important;
+    border-color: #3498db !important;
+}
+
+.search-input::placeholder {
+    color: #8b949e;
+}
+
+.dropdown-menu {
+    background-color: #161b22 !important;
+    border: 1px solid #30363d !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.dropdown-item {
+    color: #e6edf3 !important;
+    padding: 0.7rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.dropdown-item:hover {
+    background-color: #21262d !important;
+    color: #3498db !important;
+}
+
+.user-btn {
+    background-color: #21262d !important;
+    border: 1px solid #30363d !important;
+    color: #e6edf3 !important;
+}
+
+.user-btn:hover {
+    border-color: #3498db !important;
+}
+
+.btn-outline-primary {
+    color: #3498db !important;
+    border-color: #3498db !important;
+}
+
+.btn-outline-primary:hover {
+    background-color: #3498db !important;
+    color: #fff !important;
+}
+
+.btn-primary {
+    background-color: #3498db !important;
+    border-color: #3498db !important;
+}
+
+.btn-primary:hover {
+    background-color: #2980b9 !important;
+    border-color: #2980b9 !important;
+}
+</style> 

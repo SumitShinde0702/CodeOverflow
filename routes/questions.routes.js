@@ -20,8 +20,8 @@ function requireAuth(req, res, next) {
 }
 
 // Questions routes
-router.get("/", requireAuth, getQuestionsHandler);
-router.post("/", requireAuth, postQuestionHandler);
+router.get("/", getQuestionsHandler);
+router.post("/", postQuestionHandler);
 
 // Voting routes
 router.post("/:id/upvote", requireAuth, upvoteQuestionHandler);
@@ -35,6 +35,6 @@ router.post("/:id/edit", requireAuth, editQuestionHandler);
 router.post("/:id/delete", requireAuth, deleteQuestionHandler);
 
 // Add this route for question details
-router.get("/:id", requireAuth, getQuestionDetailHandler);
+router.get("/:id", getQuestionDetailHandler);
 
 module.exports = router;

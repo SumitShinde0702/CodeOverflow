@@ -61,11 +61,9 @@ if (!fs.existsSync(uploadDir)) {
 }
 
 app.get("/", (req, res) => {
-    if (req.session.userId) {
-        res.redirect("/questions");
-    } else {
-        res.render("main");
-    }
+    res.render('main', {
+        userId: req.session.userId
+    });
 });
 
 app.get("/login", (req, res) => {

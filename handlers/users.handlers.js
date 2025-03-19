@@ -7,7 +7,8 @@ const {
     getUserByUsername,
     getAllAnswersByUserId,
     changePassword,
-    getQuestionById
+    getQuestionById,
+    getQuestions
 } = require("../lib/database");
 const { ObjectId } = require('mongodb');
 
@@ -27,11 +28,61 @@ const upload = multer({ storage: storage });
 
 const getAllUsersHandler = async (req, res) => {
     try {
+        const { sort = '', search = '' } = req.query;
         const users = await getAllUsers();
-        res.render('list_users', { users });
+        
+        let sortedUsers = [...users];
+        
+        // Apply search filter if present
+        if (search) {
+            sortedUsers = sortedUsers.filter(user => 
+                user.username.toLowerCase().includes(search.toLowerCase())
+            );
+        }
+
+        // Apply sorting for top contributors
+        if (sort === 'top') {
+            // Sort by answer count if that data is available
+            sortedUsers.sort((a, b) => (b.answers?.length || 0) - (a.answers?.length || 0));
+        }
+
+        // Get answers and questions count for each user
+        const usersWithStats = await Promise.all(sortedUsers.map(async (user) => {
+            try {
+                const answers = await getAllAnswersByUserId(user._id.toString());
+                const questions = await getQuestionById(user._id.toString());
+
+                return {
+                    ...user,
+                    answers,
+                    questions
+                };
+            } catch (err) {
+                console.error(`Error getting stats for user ${user._id}:`, err);
+                return {
+                    ...user,
+                    answers: [],
+                    questions: []
+                };
+            }
+        }));
+
+        console.log('About to render users page');
+        res.render('users/users', {
+            users: usersWithStats,
+            userId: req.session.userId,
+            sort: sort,
+            search: search
+        });
+        console.log('Render completed');
     } catch (err) {
-        console.error(err);
-        res.status(500).send('Internal Server Error');
+        console.error('Error in getAllUsersHandler:', err);
+        res.render('users/users', {
+            users: [],
+            userId: req.session.userId,
+            sort: '',
+            search: ''
+        });
     }
 };
 
@@ -49,7 +100,7 @@ const getUserHandler = async (req, res) => {
         }
 
         // Get user's answers with questions
-        const answers = await getAllAnswersByUserId(userId);
+        const answers = await getAllAnswersByUserId(user._id.toString());
 
         // Format user data with defaults
         const userData = {
@@ -78,18 +129,34 @@ const getUserHandler = async (req, res) => {
 
 const getUserByIdHandler = async (req, res) => {
     try {
+        console.log('Getting user details for ID:', req.params.id);
         const user = await getUserById(req.params.id);
+        
         if (!user) {
-            return res.redirect('/questions');
+            console.log('User not found');
+            return res.redirect('/users');
         }
-        res.render('users/profile', { 
+
+        const answers = await getAllAnswersByUserId(req.params.id) || [];
+        const allQuestions = await getQuestions();
+        // Filter questions for this user
+        const questions = allQuestions.filter(q => q.userId.toString() === req.params.id) || [];
+
+        console.log('Rendering details with:', { 
+            username: user.username, 
+            answersCount: answers?.length || 0,
+            questionsCount: questions?.length || 0
+        });
+        
+        res.render('users/details', {
             user,
-            userId: req.session.userId,
-            isOwnProfile: req.session.userId === req.params.id
+            answers: answers || [],
+            questions: questions || [],
+            userId: req.session.userId
         });
     } catch (err) {
-        console.error(err);
-        res.redirect('/questions');
+        console.error('Error in getUserByIdHandler:', err);
+        res.redirect('/users');
     }
 };
 
@@ -142,7 +209,7 @@ const changePasswordHandler = async (req, res) => {
 
         if (newPassword !== confirmPassword) {
             const user = await getUserById(userId);
-            const answers = await getAllAnswersByUserId(userId);
+            const answers = await getAllAnswersByUserId(user._id.toString());
             return res.render('users/profile', {
                 user,
                 answers,

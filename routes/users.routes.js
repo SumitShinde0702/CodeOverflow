@@ -32,17 +32,18 @@ function requireAuth(req, res, next) {
     }
 }
 
-// Profile routes
-router.get("/profile", requireAuth, getUserHandler);
-router.post("/profile", requireAuth, uploadMulter.single('profilePicture'), updateUserHandler);
+// Route for listing all users should be first
+router.get('/', getAllUsersHandler);
+
+// Other user routes
+router.get('/profile', requireAuth, getUserHandler);
+router.post('/change-password', requireAuth, changePasswordHandler);
 
 // User routes
-router.get("/:id", requireAuth, getUserByIdHandler);
+router.get("/:id", getUserByIdHandler);
+router.get('/details/:id', getUserByIdHandler);
 
 // Admin routes
-router.get("/", requireAuth, getAllUsersHandler);
 router.post("/delete/:id", requireAuth, deleteUserHandler);
-
-router.post('/change-password', requireAuth, changePasswordHandler);
 
 module.exports = router;
