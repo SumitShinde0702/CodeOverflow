@@ -67,6 +67,32 @@
                             <i class="fas fa-question-circle me-1"></i>Unanswered
                         </a>
                     </div>
+                    <!-- Add Tag Filter Dropdown -->
+                    <div class="dropdown">
+                        <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-tags me-1"></i><%= tag ? `Tag: ${tag}` : 'Filter by Tag' %>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            <% if (tag) { %>
+                                <li><a class="dropdown-item" href="/questions?sort=<%= sort %>">Clear Tag Filter</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                            <% } %>
+                            <% allTags.forEach(tagName => { %>
+                                <li>
+                                    <a class="dropdown-item <%= tag === tagName ? 'active' : '' %>" 
+                                       href="/questions?sort=<%= sort %>&tag=<%= tagName %>">
+                                        <%= tagName %>
+                                        <% if (tag === tagName) { %>
+                                            <i class="fas fa-check ms-2"></i>
+                                        <% } %>
+                                    </a>
+                                </li>
+                            <% }); %>
+                            <% if (allTags.length === 0) { %>
+                                <li><span class="dropdown-item disabled">No tags available</span></li>
+                            <% } %>
+                        </ul>
+                    </div>
                     <a href="#" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#askQuestionModal">
                         <i class="fas fa-plus me-1"></i>Ask Question
                     </a>
@@ -78,6 +104,10 @@
                                class="form-control bg-dark text-white" 
                                placeholder="Search questions..."
                                value="<%= search || '' %>">
+                        <input type="hidden" name="sort" value="<%= sort %>">
+                        <% if (tag) { %>
+                            <input type="hidden" name="tag" value="<%= tag %>">
+                        <% } %>
                         <button type="submit" class="btn btn-outline-light">
                             <i class="fas fa-search"></i>
                         </button>

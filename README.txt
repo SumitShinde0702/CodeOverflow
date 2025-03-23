@@ -32,7 +32,7 @@ DEPLOYMENT INSTRUCTIONS
       ```
    d. Create .env file with:
       ```
-      MONGODB_URI=mongodb://localhost:27017/codeoverflow
+      MONGODB_URI=mongodb://localhost:27017/codeoverflow (if needed)
       SESSION_SECRET=your_secret_key_here
       PORT=3000
       ```
@@ -60,13 +60,14 @@ FEATURES
    - Login/Logout
    - Profile Management
    - Profile Picture Upload
+   - Account deletion 
 
 2. Question Management
    - Post Questions
    - Edit/Delete Questions
    - Tag System
    - Voting System
-   - Sort by Newest/Hot/Most Voted
+   - Sort by Newest/Hot/Unanswered
 
 3. Answer Management
    - Post Answers
@@ -74,10 +75,12 @@ FEATURES
    - Voting System
 
 4. Additional Features
-   - Responsive Design
-   - Dark Theme
+   - View list of users 
+   - Search a user 
+   - View details of a user
    - Search Functionality
    - Tag Filtering
+   - Search a question 
 
 TECH STACK
 ----------

@@ -9,7 +9,8 @@ const {
     updateUserHandler,
     deleteUserHandler,
     upload,
-    changePasswordHandler
+    changePasswordHandler,
+    deleteAccountHandler
 } = require("../handlers/users.handlers");
 
 // Set up multer storage
@@ -45,5 +46,8 @@ router.get('/details/:id', getUserByIdHandler);
 
 // Admin routes
 router.post("/delete/:id", requireAuth, deleteUserHandler);
+
+// Add this route for account deletion
+router.post("/delete-account", requireAuth, deleteAccountHandler);
 
 module.exports = router;
