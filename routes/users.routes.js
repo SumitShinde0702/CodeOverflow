@@ -6,8 +6,9 @@ const {
     getAllUsersHandler,
     getUserHandler,
     getUserByIdHandler,
-    updateUserHandler,
+    addUserHandler,
     deleteUserHandler,
+    updateUserHandler,
     upload,
     changePasswordHandler,
     deleteAccountHandler
@@ -49,5 +50,8 @@ router.post("/delete/:id", requireAuth, deleteUserHandler);
 
 // Add this route for account deletion
 router.post("/delete-account", requireAuth, deleteAccountHandler);
+
+// Profile update route with file upload
+router.post("/profile", requireAuth, uploadMulter.single('profilePicture'), updateUserHandler);
 
 module.exports = router;

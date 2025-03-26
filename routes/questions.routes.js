@@ -21,7 +21,7 @@ function requireAuth(req, res, next) {
 
 // Questions routes
 router.get("/", getQuestionsHandler);
-router.post("/", postQuestionHandler);
+router.post("/", requireAuth, postQuestionHandler);
 
 // Voting routes
 router.post("/:id/upvote", requireAuth, upvoteQuestionHandler);

@@ -45,12 +45,6 @@ const getAllUsersHandler = async (req, res) => {
             );
         }
 
-        // Apply sorting for top contributors
-        if (sort === 'top') {
-            // Sort by answer count if that data is available
-            sortedUsers.sort((a, b) => (b.answers?.length || 0) - (a.answers?.length || 0));
-        }
-
         // Get answers and questions count for each user
         const usersWithStats = await Promise.all(sortedUsers.map(async (user) => {
             try {
@@ -61,17 +55,26 @@ const getAllUsersHandler = async (req, res) => {
                 return {
                     ...user,
                     answers,
-                    questions
+                    questions,
+                    totalAnswers: answers.length,
+                    totalQuestions: questions.length
                 };
             } catch (err) {
                 console.error(`Error getting stats for user ${user._id}:`, err);
                 return {
                     ...user,
                     answers: [],
-                    questions: []
+                    questions: [],
+                    totalAnswers: 0,
+                    totalQuestions: 0
                 };
             }
         }));
+
+        // Apply sorting for top contributors
+        if (sort === 'top') {
+            usersWithStats.sort((a, b) => b.totalAnswers - a.totalAnswers);
+        }
 
         console.log('About to render users page');
         res.render('users/users', {
