@@ -7,7 +7,13 @@ const {
     getUserByUsername,
     getAllAnswersByUserId,
     changePassword,
-    getQuestionById
+    getQuestionById,
+    getQuestions,
+    deleteAnswer,
+    deleteQuestion,
+    getAnswers,
+    updateQuestion,
+    updateAnswer
 } = require("../lib/database");
 const { ObjectId } = require('mongodb');
 
@@ -27,11 +33,65 @@ const upload = multer({ storage: storage });
 
 const getAllUsersHandler = async (req, res) => {
     try {
+        const { sort = '', search = '' } = req.query;
         const users = await getAllUsers();
-        res.render('list_users', { users });
+        
+        let sortedUsers = [...users];
+        
+        // Apply search filter if present
+        if (search) {
+            sortedUsers = sortedUsers.filter(user => 
+                user.username.toLowerCase().includes(search.toLowerCase())
+            );
+        }
+
+        // Get answers and questions count for each user
+        const usersWithStats = await Promise.all(sortedUsers.map(async (user) => {
+            try {
+                const answers = await getAllAnswersByUserId(user._id.toString());
+                const allQuestions = await getQuestions();
+                const questions = allQuestions.filter(q => q.userId.toString() === user._id.toString());
+
+                return {
+                    ...user,
+                    answers,
+                    questions,
+                    totalAnswers: answers.length,
+                    totalQuestions: questions.length
+                };
+            } catch (err) {
+                console.error(`Error getting stats for user ${user._id}:`, err);
+                return {
+                    ...user,
+                    answers: [],
+                    questions: [],
+                    totalAnswers: 0,
+                    totalQuestions: 0
+                };
+            }
+        }));
+
+        // Apply sorting for top contributors
+        if (sort === 'top') {
+            usersWithStats.sort((a, b) => b.totalAnswers - a.totalAnswers);
+        }
+
+        console.log('About to render users page');
+        res.render('users/users', {
+            users: usersWithStats,
+            userId: req.session.userId,
+            sort: sort,
+            search: search
+        });
+        console.log('Render completed');
     } catch (err) {
-        console.error(err);
-        res.status(500).send('Internal Server Error');
+        console.error('Error in getAllUsersHandler:', err);
+        res.render('users/users', {
+            users: [],
+            userId: req.session.userId,
+            sort: '',
+            search: ''
+        });
     }
 };
 
@@ -49,7 +109,11 @@ const getUserHandler = async (req, res) => {
         }
 
         // Get user's answers with questions
-        const answers = await getAllAnswersByUserId(userId);
+        const answers = await getAllAnswersByUserId(user._id.toString());
+        
+        // Get user's questions
+        const allQuestions = await getQuestions();
+        const userQuestions = allQuestions.filter(q => q.userId.toString() === user._id.toString());
 
         // Format user data with defaults
         const userData = {
@@ -65,6 +129,7 @@ const getUserHandler = async (req, res) => {
         res.render('users/profile', {
             user: userData,
             answers: answers || [], // answers now include question details from getAllAnswersByUserId
+            questions: userQuestions || [], // Add questions to the template
             userId: req.session.userId,
             error: null,
             success: null
@@ -78,18 +143,34 @@ const getUserHandler = async (req, res) => {
 
 const getUserByIdHandler = async (req, res) => {
     try {
+        console.log('Getting user details for ID:', req.params.id);
         const user = await getUserById(req.params.id);
+        
         if (!user) {
-            return res.redirect('/questions');
+            console.log('User not found');
+            return res.redirect('/users');
         }
-        res.render('users/profile', { 
+
+        const answers = await getAllAnswersByUserId(req.params.id) || [];
+        const allQuestions = await getQuestions();
+        // Filter questions for this user
+        const questions = allQuestions.filter(q => q.userId.toString() === req.params.id) || [];
+
+        console.log('Rendering details with:', { 
+            username: user.username, 
+            answersCount: answers?.length || 0,
+            questionsCount: questions?.length || 0
+        });
+        
+        res.render('users/details', {
             user,
-            userId: req.session.userId,
-            isOwnProfile: req.session.userId === req.params.id
+            answers: answers || [],
+            questions: questions || [],
+            userId: req.session.userId
         });
     } catch (err) {
-        console.error(err);
-        res.redirect('/questions');
+        console.error('Error in getUserByIdHandler:', err);
+        res.redirect('/users');
     }
 };
 
@@ -142,7 +223,7 @@ const changePasswordHandler = async (req, res) => {
 
         if (newPassword !== confirmPassword) {
             const user = await getUserById(userId);
-            const answers = await getAllAnswersByUserId(userId);
+            const answers = await getAllAnswersByUserId(user._id.toString());
             return res.render('users/profile', {
                 user,
                 answers,
@@ -161,6 +242,88 @@ const changePasswordHandler = async (req, res) => {
     }
 };
 
+const deleteAccountHandler = async (req, res) => {
+    try {
+        const userId = req.session.userId;
+        
+        if (!userId) {
+            return res.redirect('/login');
+        }
+
+        try {
+            // Get all user's questions and answers first
+            const allQuestions = await getQuestions();
+            const userQuestions = allQuestions.filter(q => q.userId.toString() === userId.toString());
+            const userAnswers = await getAllAnswersByUserId(userId);
+
+            // 1. Delete all user's questions (this will also delete associated answers)
+            for (const question of userQuestions) {
+                await deleteQuestion(question._id.toString());
+            }
+
+            // 2. Delete any remaining answers by the user on other people's questions
+            for (const answer of userAnswers) {
+                await deleteAnswer(answer._id.toString());
+            }
+
+            // 3. Remove user's votes from remaining questions
+            const remainingQuestions = allQuestions.filter(q => q.userId.toString() !== userId.toString());
+            for (const question of remainingQuestions) {
+                if (question.upvotes || question.downvotes) {
+                    await updateQuestion(question._id.toString(), {
+                        upvotes: (question.upvotes || []).filter(id => id.toString() !== userId.toString()),
+                        downvotes: (question.downvotes || []).filter(id => id.toString() !== userId.toString())
+                    });
+                }
+            }
+
+            // 4. Remove user's votes from remaining answers
+            for (const question of remainingQuestions) {
+                const questionAnswers = await getAnswers(question._id.toString());
+                for (const answer of questionAnswers) {
+                    if ((answer.upvotes && answer.upvotes.includes(userId)) || 
+                        (answer.downvotes && answer.downvotes.includes(userId))) {
+                        await updateAnswer(answer._id.toString(), {
+                            upvotes: (answer.upvotes || []).filter(id => id.toString() !== userId.toString()),
+                            downvotes: (answer.downvotes || []).filter(id => id.toString() !== userId.toString())
+                        });
+                    }
+                }
+            }
+
+            // 5. Finally, delete the user's account
+            const deleteResult = await deleteUser(userId);
+            console.log('User deletion result:', deleteResult);
+            
+            // 6. Clear the session and redirect
+            req.session.destroy((err) => {
+                if (err) {
+                    console.error('Error destroying session:', err);
+                }
+                res.redirect('/');
+            });
+        } catch (deleteError) {
+            console.error('Error during deletion process:', deleteError);
+            const user = await getUserById(userId);
+            const answers = await getAllAnswersByUserId(userId);
+            const questions = await getQuestions();
+            const userQuestions = questions.filter(q => q.userId.toString() === userId.toString());
+            
+            return res.render('users/profile', {
+                user,
+                answers,
+                questions: userQuestions,
+                userId,
+                error: 'Failed to delete account. Please try again.',
+                success: null
+            });
+        }
+    } catch (err) {
+        console.error('Error in deleteAccountHandler:', err);
+        res.redirect('/users/profile');
+    }
+};
+
 module.exports = {
     getAllUsersHandler,
     getUserHandler,
@@ -169,5 +332,6 @@ module.exports = {
     updateUserHandler,
     deleteUserHandler,
     upload,
-    changePasswordHandler
+    changePasswordHandler,
+    deleteAccountHandler
 };

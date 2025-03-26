@@ -6,10 +6,12 @@ const {
     getAllUsersHandler,
     getUserHandler,
     getUserByIdHandler,
-    updateUserHandler,
+    addUserHandler,
     deleteUserHandler,
+    updateUserHandler,
     upload,
-    changePasswordHandler
+    changePasswordHandler,
+    deleteAccountHandler
 } = require("../handlers/users.handlers");
 
 // Set up multer storage
@@ -32,17 +34,24 @@ function requireAuth(req, res, next) {
     }
 }
 
-// Profile routes
-router.get("/profile", requireAuth, getUserHandler);
-router.post("/profile", requireAuth, uploadMulter.single('profilePicture'), updateUserHandler);
+// Route for listing all users should be first
+router.get('/', getAllUsersHandler);
+
+// Other user routes
+router.get('/profile', requireAuth, getUserHandler);
+router.post('/change-password', requireAuth, changePasswordHandler);
 
 // User routes
-router.get("/:id", requireAuth, getUserByIdHandler);
+router.get("/:id", getUserByIdHandler);
+router.get('/details/:id', getUserByIdHandler);
 
 // Admin routes
-router.get("/", requireAuth, getAllUsersHandler);
 router.post("/delete/:id", requireAuth, deleteUserHandler);
 
-router.post('/change-password', requireAuth, changePasswordHandler);
+// Add this route for account deletion
+router.post("/delete-account", requireAuth, deleteAccountHandler);
+
+// Profile update route with file upload
+router.post("/profile", requireAuth, uploadMulter.single('profilePicture'), updateUserHandler);
 
 module.exports = router;

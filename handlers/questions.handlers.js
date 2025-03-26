@@ -31,15 +31,23 @@ const getQuestionsHandler = async (req, res) => {
             );
         }
 
-        // Sort questions
-        questions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        // Apply sorting
+        switch(sort) {
+            case 'active':
+                questions.sort((a, b) => (b.answers?.length || 0) - (a.answers?.length || 0));
+                break;
+            case 'unanswered':
+                questions = questions.filter(q => !q.answers || q.answers.length === 0);
+                questions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                break;
+            case 'newest':
+            default:
+                questions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        }
 
         const questionsWithAuthors = await Promise.all(questions.map(async (question) => {
             const author = await getUserById(question.userId);
             const answers = await getAnswers(question._id.toString());
-            
-            console.log('Author data:', author); // Debug log
-            console.log('Profile picture path:', author?.profilePicture); // Debug log
             
             return {
                 ...question,
@@ -58,6 +66,7 @@ const getQuestionsHandler = async (req, res) => {
             questions: questionsWithAuthors,
             userId: req.session.userId,
             sort,
+            filter: sort === 'unanswered' ? 'unanswered' : '',
             tag: tag || '',
             search: search || '',
             allTags
@@ -68,6 +77,7 @@ const getQuestionsHandler = async (req, res) => {
             questions: [],
             userId: req.session.userId,
             sort: 'newest',
+            filter: '',
             tag: '',
             search: '',
             allTags: []
@@ -76,12 +86,11 @@ const getQuestionsHandler = async (req, res) => {
 };
 
 const postQuestionHandler = async (req, res) => {
+    console.log('Received POST request for question creation');
     try {
         const userId = req.session.userId;
         const { title, body, tags } = req.body;
         const user = await getUserById(userId);
-
-        console.log('User found:', user); // Debug log
 
         if (!userId || !title || !body) {
             return res.redirect('/questions');

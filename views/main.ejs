@@ -56,6 +56,29 @@
             color: transparent;
             font-weight: bold;
         }
+
+        .button-group {
+            margin-top: 2rem;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            border-color: #3498db;
+            font-size: 1.1rem;
+            padding: 0.8rem 1.8rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+            border-color: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .btn-outline-light {
+            font-size: 1rem;
+            padding: 0.6rem 1.4rem;
+        }
     </style>
 </head>
 <body class="bg-dark text-light">
@@ -67,8 +90,15 @@
                     <i class="fas fa-code me-2"></i>CodeOverflow
                 </a>
                 <div>
-                    <a href="/login" class="btn btn-outline-light me-2">Login</a>
-                    <a href="/register" class="btn btn-primary">Register</a>
+                    <div class="button-group">
+                        <a href="/questions" class="btn btn-primary btn-lg me-3">
+                            <i class="fas fa-question-circle me-2"></i>View Questions
+                        </a>
+                        <% if (!userId) { %>
+                            <a href="/login" class="btn btn-outline-light me-2">Login</a>
+                            <a href="/register" class="btn btn-outline-light">Register</a>
+                        <% } %>
+                    </div>
                 </div>
             </div>
         </nav>
