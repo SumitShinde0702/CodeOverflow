@@ -1,0 +1,68 @@
+.code-animation {
+    font-family: monospace;
+    overflow: hidden;
+    border-right: .15em solid orange;
+    white-space: nowrap;
+    margin: 0 auto;
+    letter-spacing: .15em;
+    animation: 
+        typing 3.5s steps(40, end),
+        blink-caret .75s step-end infinite;
+}
+
+@keyframes typing {
+    from { width: 0 }
+    to { width: 100% }
+}
+
+@keyframes blink-caret {
+    from, to { border-color: transparent }
+    50% { border-color: orange; }
+}
+
+.floating {
+    animation: floating 3s ease-in-out infinite;
+}
+
+@keyframes floating {
+    0% { transform: translate(0, 0px); }
+    50% { transform: translate(0, 15px); }
+    100% { transform: translate(0, -0px); }
+}
+
+.bug-fix {
+    animation: bug-fixing 5s linear infinite;
+    position: relative;
+}
+
+@keyframes bug-fixing {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100vw); }
+}
+
+.gradient-text {
+    background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: bold;
+}
+
+.btn-primary {
+    background: #3498db;
+    border-color: #3498db;
+    font-size: 1.1rem;
+    padding: 0.8rem 1.8rem;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: #2980b9;
+    border-color: #2980b9;
+    transform: translateY(-2px);
+}
+
+.btn-outline-light {
+    font-size: 1rem;
+    padding: 0.6rem 1.4rem;
+}

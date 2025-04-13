@@ -7,8 +7,10 @@ const {
     upvoteQuestion,
     downvoteQuestion,
     getUserById,
-    getAnswers
+    getAnswers,
+    postAnswer
 } = require("../lib/database");
+const { ObjectId } = require("mongodb");
 
 const getQuestionsHandler = async (req, res) => {
     try {
@@ -18,12 +20,10 @@ const getQuestionsHandler = async (req, res) => {
         // Get all unique tags from questions
         const allTags = [...new Set(questions.flatMap(q => q.tags || []))];
 
-        // Apply tag filter if selected
+        // Apply filters
         if (tag) {
             questions = questions.filter(q => q.tags && q.tags.includes(tag));
         }
-
-        // Apply search filter if present
         if (search) {
             questions = questions.filter(q => 
                 q.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -40,7 +40,6 @@ const getQuestionsHandler = async (req, res) => {
                 questions = questions.filter(q => !q.answers || q.answers.length === 0);
                 questions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
                 break;
-            case 'newest':
             default:
                 questions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         }
@@ -57,63 +56,68 @@ const getQuestionsHandler = async (req, res) => {
                     profilePicture: author?.profilePicture || null
                 },
                 answerCount: answers.length,
-                isOwner: req.session.userId && question.userId && 
-                        req.session.userId.toString() === question.userId.toString()
+                // Only set isOwner if user is authenticated
+                isOwner: req.user ? (req.user.uid === question.userId.toString()) : false,
+                // Convert ObjectId to string for consistent comparison
+                userId: question.userId.toString()
             };
         }));
 
-        res.render('questions/questions', {
+        res.json({
             questions: questionsWithAuthors,
-            userId: req.session.userId,
-            sort,
-            filter: sort === 'unanswered' ? 'unanswered' : '',
-            tag: tag || '',
-            search: search || '',
-            allTags
+            allTags,
+            currentUser: req.user ? { _id: req.user.uid } : null
         });
     } catch (err) {
         console.error('Error getting questions:', err);
-        res.render('questions/questions', {
-            questions: [],
-            userId: req.session.userId,
-            sort: 'newest',
-            filter: '',
-            tag: '',
-            search: '',
-            allTags: []
-        });
+        res.status(500).json({ error: 'Failed to fetch questions' });
     }
 };
 
 const postQuestionHandler = async (req, res) => {
     console.log('Received POST request for question creation');
     try {
-        const userId = req.session.userId;
+        // Get userId from JWT token for API requests
+        const userId = req.user ? req.user.uid : req.session.userId;
         const { title, body, tags } = req.body;
-        const user = await getUserById(userId);
-
+        
+        console.log('Request body:', req.body);
+        
         if (!userId || !title || !body) {
-            return res.redirect('/questions');
+            return res.status(400).json({ message: 'Missing required fields' });
         }
 
-        const questionData = {
-            title,
-            body,
-            userId,
-            authorName: user.username,
-            createdAt: new Date(),
-            upvotes: [],
-            downvotes: [],
-            tags: tags ? tags.split(',').map(tag => tag.trim()) : []
-        };
+        try {
+            const user = await getUserById(userId);
+            
+            const questionData = {
+                title,
+                body,
+                userId,
+                authorName: user ? user.username : 'Unknown User',
+                createdAt: new Date(),
+                upvotes: [],
+                downvotes: [],
+                tags: Array.isArray(tags) ? tags : (tags ? tags.split(',').map(tag => tag.trim()) : [])
+            };
 
-        console.log('Question data being saved:', questionData); // Debug log
+            console.log('Question data being saved:', questionData);
 
-        await postQuestion(userId, questionData);
-        res.redirect('/questions');
+            const questionId = await postQuestion(userId, questionData);
+            
+            // Return JSON for API requests
+            return res.status(201).json({ 
+                message: 'Question posted successfully',
+                _id: questionId
+            });
+            
+        } catch (error) {
+            console.error('Error getting user or saving question:', error);
+            return res.status(500).json({ message: 'Server error while saving question' });
+        }
     } catch (err) {
         console.error('Error in postQuestionHandler:', err);
-        res.redirect('/questions');
+        res.status(500).json({ message: 'Failed to post question' });
     }
 };
 
@@ -136,145 +140,225 @@ const getEditQuestionHandler = async (req, res) => {
 const editQuestionHandler = async (req, res) => {
     try {
         const questionId = req.params.id;
-        const userId = req.session.userId;
+        const userId = req.user.uid;  // Get userId from JWT token
         const { title, body, tags } = req.body;
 
         const question = await getQuestionById(questionId);
-        if (!question || question.userId.toString() !== userId.toString()) {
-            return res.redirect('/questions');
+        if (!question) {
+            return res.status(404).json({ message: 'Question not found' });
         }
 
-        await updateQuestion(questionId, {
+        if (question.userId.toString() !== userId) {
+            return res.status(403).json({ message: 'You can only edit your own questions' });
+        }
+
+        const updated = await updateQuestion(questionId, {
             title,
             body,
-            tags: tags ? tags.split(',').map(tag => tag.trim()) : []
+            tags: Array.isArray(tags) ? tags : (tags ? tags.split(',').map(tag => tag.trim()) : [])
         });
 
-        res.redirect('/questions');
+        if (updated) {
+            const updatedQuestion = await getQuestionById(questionId);
+            res.json(updatedQuestion);
+        } else {
+            res.status(500).json({ message: 'Failed to update question' });
+        }
     } catch (error) {
         console.error('Error updating question:', error);
-        res.redirect('/questions');
+        res.status(500).json({ message: 'Failed to update question' });
     }
 };
 
 const deleteQuestionHandler = async (req, res) => {
     try {
         const questionId = req.params.id;
-        const userId = req.session.userId;
+        const userId = req.user.uid;  // Get userId from JWT token
 
         const question = await getQuestionById(questionId);
-        if (!question || question.userId.toString() !== userId.toString()) {
-            return res.redirect('/questions');
+        if (!question) {
+            return res.status(404).json({ message: 'Question not found' });
+        }
+
+        if (question.userId.toString() !== userId) {
+            return res.status(403).json({ message: 'You can only delete your own questions' });
         }
 
         await deleteQuestion(questionId);
-        res.redirect('/questions');
+        res.status(200).json({ message: 'Question deleted successfully' });
     } catch (err) {
         console.error('Error deleting question:', err);
-        res.redirect('/questions');
+        res.status(500).json({ message: 'Failed to delete question' });
     }
 };
 
 const upvoteQuestionHandler = async (req, res) => {
     try {
-        const userId = req.session.userId;
+        const userId = req.user.uid;  // Get userId from JWT token
         const questionId = req.params.id;
 
         if (!userId) {
-            return res.redirect('/login');
+            return res.status(401).json({ message: 'Please login to vote' });
         }
 
-        await upvoteQuestion(userId, questionId);
-        // Check if we're on the detail page
-        const referer = req.get('Referer');
-        if (referer && referer.includes(`/questions/${questionId}`)) {
-            res.redirect(`/questions/${questionId}`);
+        const result = await upvoteQuestion(userId, questionId);
+        if (result) {
+            const updatedQuestion = await getQuestionById(questionId);
+            res.json(updatedQuestion);
         } else {
-            res.redirect('/questions');
+            res.status(500).json({ message: 'Failed to upvote question' });
         }
     } catch (err) {
         console.error('Error in upvoteQuestionHandler:', err);
-        res.redirect('/questions');
+        res.status(500).json({ message: 'Failed to upvote question' });
     }
 };
 
 const downvoteQuestionHandler = async (req, res) => {
     try {
-        const userId = req.session.userId;
+        const userId = req.user.uid;  // Get userId from JWT token
         const questionId = req.params.id;
 
         if (!userId) {
-            return res.redirect('/login');
+            return res.status(401).json({ message: 'Please login to vote' });
         }
 
-        await downvoteQuestion(userId, questionId);
-        // Check if we're on the detail page
-        const referer = req.get('Referer');
-        if (referer && referer.includes(`/questions/${questionId}`)) {
-            res.redirect(`/questions/${questionId}`);
+        const result = await downvoteQuestion(userId, questionId);
+        if (result) {
+            const updatedQuestion = await getQuestionById(questionId);
+            res.json(updatedQuestion);
         } else {
-            res.redirect('/questions');
+            res.status(500).json({ message: 'Failed to downvote question' });
         }
     } catch (err) {
         console.error('Error in downvoteQuestionHandler:', err);
-        res.redirect('/questions');
+        res.status(500).json({ message: 'Failed to downvote question' });
     }
 };
 
 const getQuestionDetailHandler = async (req, res) => {
     try {
         const questionId = req.params.id;
-        const userId = req.session.userId;
-
-        // Get question with author details
         const question = await getQuestionById(questionId);
-        console.log('Question found:', question); // Debug log
-
+        
         if (!question) {
-            return res.redirect('/questions');
+            return res.status(404).json({ message: 'Question not found' });
         }
-
-        // Get the author details
+        
+        // Get author details
         const author = await getUserById(question.userId);
-        console.log('Author found:', author); // Debug log
-
-        const questionWithAuthor = {
+        
+        // Format the response
+        const formattedQuestion = {
             ...question,
             authorName: author ? author.username : 'Unknown User',
             author: {
-                profilePicture: author ? author.profilePicture : null
+                username: author ? author.username : 'Unknown User',
+                profilePicture: author?.profilePicture || null
+            },
+            // Only set isOwner if user is authenticated
+            isOwner: req.user ? (req.user.uid === question.userId.toString()) : false,
+            // Convert ObjectId to string for consistent comparison
+            userId: question.userId.toString()
+        };
+        
+        res.json(formattedQuestion);
+    } catch (error) {
+        console.error('Error getting question details:', error);
+        res.status(500).json({ message: 'Failed to fetch question details' });
+    }
+};
+
+const getAnswersHandler = async (req, res) => {
+    try {
+        const questionId = req.params.id;
+        const answers = await getAnswers(questionId);
+        
+        const answersWithAuthors = await Promise.all(answers.map(async (answer) => {
+            try {
+                const author = await getUserById(answer.userId);
+                return {
+                    ...answer,
+                    authorName: author ? author.username : 'Unknown User',
+                    author: {
+                        username: author ? author.username : 'Unknown User',
+                        profilePicture: author?.profilePicture || null
+                    },
+                    // Only set isOwner if user is authenticated
+                    isOwner: req.user ? (req.user.uid === answer.userId.toString()) : false,
+                    // Convert ObjectId to string for consistent comparison
+                    userId: answer.userId.toString()
+                };
+            } catch (error) {
+                console.error('Error getting author for answer:', error);
+                return {
+                    ...answer,
+                    authorName: 'Unknown User',
+                    author: {
+                        username: 'Unknown User',
+                        profilePicture: null
+                    },
+                    isOwner: false,
+                    userId: answer.userId.toString()
+                };
             }
+        }));
+        
+        res.json({
+            answers: answersWithAuthors,
+            currentUser: req.user ? { _id: req.user.uid } : null
+        });
+    } catch (error) {
+        console.error('Error fetching answers:', error);
+        res.status(500).json({ message: 'Failed to fetch answers' });
+    }
+};
+
+// Add postAnswerHandler function to handle posting answers to questions
+const postAnswerHandler = async (req, res) => {
+    try {
+        const questionId = req.params.id;
+        const userId = req.user.uid;
+        const { body } = req.body;
+
+        if (!body) {
+            return res.status(400).json({ message: 'Answer content is required' });
+        }
+
+        // Verify the question exists
+        const question = await getQuestionById(questionId);
+        if (!question) {
+            return res.status(404).json({ message: 'Question not found' });
+        }
+
+        const user = await getUserById(userId);
+        const answerData = {
+            body,
+            userId: ObjectId.createFromHexString(userId),
+            questionId: ObjectId.createFromHexString(questionId),
+            authorName: user ? user.username : 'Unknown User',
+            createdAt: new Date(),
+            upvotes: [],
+            downvotes: []
         };
 
-        console.log('Question with author:', questionWithAuthor); // Debug log
-
-        // Get answers for this question
-        const answers = await getAnswers(questionId);
-
-        // Get author details for each answer
-        const answersWithAuthors = await Promise.all(answers.map(async (answer) => {
-            const author = await getUserById(answer.userId);
-            return {
-                ...answer,
-                authorName: author ? author.username : 'Unknown User',
-                author: {
-                    profilePicture: author ? author.profilePicture : null
-                }
-            };
-        }));
-
-        // Add these debug logs
-        console.log("Question author profile picture:", questionWithAuthor.author.profilePicture);
-        console.log("Answer profile pictures:", answersWithAuthors.map(a => a.author.profilePicture));
-
-        res.render('questions/question-detail', {
-            question: questionWithAuthor,
-            answers: answersWithAuthors,
-            userId: userId
-        });
-    } catch (err) {
-        console.error('Error in getQuestionDetailHandler:', err);
-        res.redirect('/questions');
+        console.log('Creating answer with data:', answerData);
+        const newAnswerId = await postAnswer(answerData);
+        
+        // Return the created answer with its ID
+        const createdAnswer = {
+            _id: newAnswerId,
+            ...answerData,
+            author: {
+                username: user ? user.username : 'Unknown User',
+                profilePicture: user ? user.profilePicture : null
+            }
+        };
+        
+        res.status(201).json(createdAnswer);
+    } catch (error) {
+        console.error("Error posting answer:", error);
+        res.status(500).json({ message: "Failed to post answer" });
     }
 };
 
@@ -286,5 +370,7 @@ module.exports = {
     deleteQuestionHandler,
     upvoteQuestionHandler,
     downvoteQuestionHandler,
-    getQuestionDetailHandler
+    getQuestionDetailHandler,
+    getAnswersHandler,
+    postAnswerHandler
 }; 

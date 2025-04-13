@@ -1,31 +1,21 @@
 const express = require("express");
 const router = express.Router();
+const { requireAuthJWT } = require("../handlers/users.handlers");
 const {
     postAnswerHandler,
     editAnswerHandler,
     deleteAnswerHandler,
     upvoteAnswerHandler,
-    downvoteAnswerHandler,
-    getEditAnswerHandler
+    downvoteAnswerHandler
 } = require("../handlers/answers.handlers");
 
-function requireAuth(req, res, next) {
-    if (req.session && req.session.userId) {
-        next(); //continue - pass to the next middleware
-    } else {
-        //bounce the user to the login page
-        res.redirect("/login");
-    }
-}
-
 // Answer CRUD routes
-router.post("/:questionId/answers", requireAuth, postAnswerHandler);
-router.get("/:id/edit", requireAuth, getEditAnswerHandler);
-router.post("/:id/edit", requireAuth, editAnswerHandler);
-router.post("/:id/delete", requireAuth, deleteAnswerHandler);
+router.post("/:questionId/answers", requireAuthJWT, postAnswerHandler);
+router.put("/:id", requireAuthJWT, editAnswerHandler);
+router.delete("/:id", requireAuthJWT, deleteAnswerHandler);
 
 // Answer voting routes
-router.post("/:id/upvote", requireAuth, upvoteAnswerHandler);
-router.post("/:id/downvote", requireAuth, downvoteAnswerHandler);
+router.post("/:id/upvote", requireAuthJWT, upvoteAnswerHandler);
+router.post("/:id/downvote", requireAuthJWT, downvoteAnswerHandler);
 
 module.exports = router;

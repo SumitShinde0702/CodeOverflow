@@ -13,29 +13,40 @@ const { ObjectId } = require("mongodb");
 const postAnswerHandler = async (req, res) => {
     try {
         const questionId = req.params.questionId;
-        const userId = req.session.userId;
+        const userId = req.user.uid;
         const { body } = req.body;
+
+        if (!body) {
+            return res.status(400).json({ message: 'Answer content is required' });
+        }
 
         const user = await getUserById(userId);
         const answerData = {
             body,
             userId: ObjectId.createFromHexString(userId),
             questionId: ObjectId.createFromHexString(questionId),
-            authorName: user.username,
-            author: {
-                profilePicture: user.profilePicture,
-                username: user.username
-            },
+            authorName: user ? user.username : 'Unknown User',
             createdAt: new Date(),
             upvotes: [],
             downvotes: []
         };
 
-        await postAnswer(answerData);
-        res.redirect(`/questions/${questionId}`);
+        const newAnswerId = await postAnswer(answerData);
+        
+        // Return the created answer with its ID
+        const createdAnswer = {
+            _id: newAnswerId,
+            ...answerData,
+            author: {
+                username: user ? user.username : 'Unknown User',
+                profilePicture: user ? user.profilePicture : null
+            }
+        };
+        
+        res.status(201).json(createdAnswer);
     } catch (error) {
         console.error("Error posting answer:", error);
-        res.redirect(`/questions/${req.params.questionId}`);
+        res.status(500).json({ message: "Failed to post answer" });
     }
 };
 
@@ -55,34 +66,51 @@ const getEditAnswerHandler = async (req, res) => {
 const editAnswerHandler = async (req, res) => {
     try {
         const answerId = req.params.id;
-        const userId = req.session.userId;
+        const userId = req.user.uid;
         const { body } = req.body;
 
+        // Check if the answer exists and belongs to the user
         const answer = await getAnswerById(answerId);
-        if (!answer || answer.userId.toString() !== userId.toString()) {
-            return res.redirect('/questions');
+        if (!answer) {
+            return res.status(404).json({ message: 'Answer not found' });
+        }
+        
+        if (answer.userId.toString() !== userId) {
+            return res.status(403).json({ message: 'You are not authorized to edit this answer' });
         }
 
-        await updateAnswer(answerId, { body });
-        res.redirect(`/questions/${answer.questionId}`);
+        const updated = await updateAnswer(answerId, { body });
+        if (updated) {
+            res.json({ message: 'Answer updated successfully' });
+        } else {
+            res.status(500).json({ message: 'Failed to update answer' });
+        }
     } catch (error) {
-        console.error('Error updating answer:', error);
-        res.redirect('/questions');
+        console.error("Error editing answer:", error);
+        res.status(500).json({ message: "Failed to edit answer" });
     }
 };
 
 const deleteAnswerHandler = async (req, res) => {
     try {
-        const answer = await getAnswerById(req.params.id);
-        if (!answer || answer.userId.toString() !== req.session.userId.toString()) {
-            return res.redirect('/questions');
+        const answerId = req.params.id;
+        const userId = req.user.uid;
+
+        // Check if the answer exists and belongs to the user
+        const answer = await getAnswerById(answerId);
+        if (!answer) {
+            return res.status(404).json({ message: 'Answer not found' });
+        }
+        
+        if (answer.userId.toString() !== userId) {
+            return res.status(403).json({ message: 'You are not authorized to delete this answer' });
         }
 
-        await deleteAnswer(req.params.id);
-        res.redirect(`/questions/${answer.questionId}`);
+        await deleteAnswer(answerId);
+        res.json({ message: 'Answer deleted successfully' });
     } catch (error) {
-        console.error('Error deleting answer:', error);
-        res.redirect('/questions');
+        console.error("Error deleting answer:", error);
+        res.status(500).json({ message: "Failed to delete answer" });
     }
 };
 
@@ -99,40 +127,35 @@ const getAnswersHandler = async (req, res) => {
 
 const upvoteAnswerHandler = async (req, res) => {
     try {
-        const userId = req.session.userId;
         const answerId = req.params.id;
+        const userId = req.user.uid;
 
-        if (!userId) {
-            return res.redirect('/login');
+        const result = await upvoteAnswer(userId, answerId);
+        if (result) {
+            res.json({ message: 'Answer upvoted successfully' });
+        } else {
+            res.status(404).json({ message: 'Answer not found' });
         }
-
-        const answer = await getAnswerById(answerId);
-        await upvoteAnswer(userId, answerId);
-        
-        res.redirect(`/questions/${answer.questionId}`);
-    } catch (err) {
-        console.error('Error upvoting answer:', err);
-        res.redirect('/questions');
+    } catch (error) {
+        console.error("Error upvoting answer:", error);
+        res.status(500).json({ message: "Failed to upvote answer" });
     }
 };
 
 const downvoteAnswerHandler = async (req, res) => {
     try {
-        const userId = req.session.userId;
         const answerId = req.params.id;
+        const userId = req.user.uid;
 
-        if (!userId) {
-            return res.redirect('/login');
+        const result = await downvoteAnswer(userId, answerId);
+        if (result) {
+            res.json({ message: 'Answer downvoted successfully' });
+        } else {
+            res.status(404).json({ message: 'Answer not found' });
         }
-
-        const answer = await getAnswerById(answerId);
-        await downvoteAnswer(userId, answerId);
-        
-        // Redirect back to the question detail page
-        res.redirect(`/questions/${answer.questionId}`);
-    } catch (err) {
-        console.error('Error downvoting answer:', err);
-        res.redirect('/questions');
+    } catch (error) {
+        console.error("Error downvoting answer:", error);
+        res.status(500).json({ message: "Failed to downvote answer" });
     }
 };
 

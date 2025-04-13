@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const multer = require('multer');
-const path = require('path');
+const upload = require('../lib/upload');
 const {
     getAllUsersHandler,
     getUserHandler,
@@ -9,22 +8,13 @@ const {
     addUserHandler,
     deleteUserHandler,
     updateUserHandler,
-    upload,
     changePasswordHandler,
-    deleteAccountHandler
+    deleteAccountHandler,
+    requireAuthJWT,
+    loginHandler,
+    getUserQuestionsHandler,
+    getUserAnswersHandler
 } = require("../handlers/users.handlers");
-
-// Set up multer storage
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/profile_pics');  // Folder where profile pictures will be stored
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname));  // Unique filename
-    }
-});
-
-const uploadMulter = multer({ storage: storage });
 
 function requireAuth(req, res, next) {
     if (req.session && req.session.userId) {
@@ -34,24 +24,28 @@ function requireAuth(req, res, next) {
     }
 }
 
-// Route for listing all users should be first
+// Public routes
+router.post('/login', loginHandler);
 router.get('/', getAllUsersHandler);
 
-// Other user routes
-router.get('/profile', requireAuth, getUserHandler);
-router.post('/change-password', requireAuth, changePasswordHandler);
+// Protected routes - specific paths first
+router.get('/profile', requireAuthJWT, getUserHandler);
+router.post('/profile', requireAuthJWT, upload.single('profilePicture'), updateUserHandler);
+router.post('/password', requireAuthJWT, changePasswordHandler);
+router.post('/delete-account', requireAuthJWT, deleteAccountHandler);
 
-// User routes
-router.get("/:id", getUserByIdHandler);
-router.get('/details/:id', getUserByIdHandler);
+// Registration route with file upload
+router.post('/', upload.single('profilePicture'), (req, res, next) => {
+    console.log('Received registration request');
+    console.log('Files:', req.file);
+    console.log('Body:', req.body);
+    next();
+}, addUserHandler);
 
-// Admin routes
-router.post("/delete/:id", requireAuth, deleteUserHandler);
-
-// Add this route for account deletion
-router.post("/delete-account", requireAuth, deleteAccountHandler);
-
-// Profile update route with file upload
-router.post("/profile", requireAuth, uploadMulter.single('profilePicture'), updateUserHandler);
+// Parameterized routes last
+router.get('/:id', getUserByIdHandler);
+router.get('/:id/questions', getUserQuestionsHandler);
+router.get('/:id/answers', getUserAnswersHandler);
+router.delete('/:id', requireAuthJWT, deleteUserHandler);
 
 module.exports = router;

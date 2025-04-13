@@ -8,33 +8,34 @@ const {
     deleteQuestionHandler,
     upvoteQuestionHandler,
     downvoteQuestionHandler,
-    getQuestionDetailHandler
+    getQuestionDetailHandler,
+    getAnswersHandler,
+    postAnswerHandler
 } = require("../handlers/questions.handlers");
-
-function requireAuth(req, res, next) {
-    if (req.session && req.session.userId) {
-        next();
-    } else {
-        res.redirect("/login");
-    }
-}
+const { requireAuthJWT } = require("../handlers/users.handlers");
 
 // Questions routes
 router.get("/", getQuestionsHandler);
-router.post("/", requireAuth, postQuestionHandler);
+router.post("/", requireAuthJWT, postQuestionHandler);
 
 // Voting routes
-router.post("/:id/upvote", requireAuth, upvoteQuestionHandler);
-router.post("/:id/downvote", requireAuth, downvoteQuestionHandler);
+router.post("/:id/upvote", requireAuthJWT, upvoteQuestionHandler);
+router.post("/:id/downvote", requireAuthJWT, downvoteQuestionHandler);
 
 // Edit routes
-router.get("/:id/edit", requireAuth, getEditQuestionHandler);
-router.post("/:id/edit", requireAuth, editQuestionHandler);
+router.get("/:id/edit", requireAuthJWT, getEditQuestionHandler);
+router.put("/:id", requireAuthJWT, editQuestionHandler);
 
 // Delete route
-router.post("/:id/delete", requireAuth, deleteQuestionHandler);
+router.delete("/:id", requireAuthJWT, deleteQuestionHandler);
 
 // Add this route for question details
 router.get("/:id", getQuestionDetailHandler);
+
+// Add route to get answers for a question
+router.get("/:id/answers", getAnswersHandler);
+
+// Add route to post answers to a question
+router.post("/:id/answers", requireAuthJWT, postAnswerHandler);
 
 module.exports = router;
