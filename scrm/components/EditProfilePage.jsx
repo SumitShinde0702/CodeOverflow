@@ -7,6 +7,7 @@ import { useAuth } from '/helpers/context/AuthContext.jsx';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import { Link } from 'react-router-dom';
+import Api from '/helpers/Api';
 
 const profileSchema = Yup.object().shape({
   username: Yup.string()
@@ -124,19 +125,16 @@ const EditProfilePage = () => {
   const handleDeleteAccount = async () => {
     try {
       setDeletingAccount(true);
-      const response = await updateProfile(new FormData());
+      await Api.deleteAccount();
       
-      if (response && response.user) {
-        // Update user in auth context
-        updateUser(response.user);
-        toast.success('Account deleted successfully!');
-        navigate('/login');
-      } else {
-        throw new Error('Failed to delete account');
-      }
+      // Clear user data and redirect to login
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      toast.success('Account deleted successfully!');
+      navigate('/login');
     } catch (error) {
       console.error('Error deleting account:', error);
-      toast.error(error.response?.data?.message || 'Failed to delete account. Please try again.');
+      toast.error(error.message || 'Failed to delete account. Please try again.');
     } finally {
       setDeletingAccount(false);
     }

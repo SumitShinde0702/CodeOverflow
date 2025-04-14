@@ -369,83 +369,63 @@ const changePasswordHandler = async (req, res) => {
 
 const deleteAccountHandler = async (req, res) => {
     try {
-        const userId = req.session.userId;
+        const userId = req.user.uid;
+        console.log('[deleteAccountHandler] JWT user ID:', userId);
+        console.log('[deleteAccountHandler] JWT user object:', req.user);
         
         if (!userId) {
-            return res.redirect('/login');
+            return res.status(401).json({ message: 'Not authenticated' });
         }
 
         try {
-            // Get all user's questions and answers first
-            const allQuestions = await getQuestions();
-            const userQuestions = allQuestions.filter(q => q.userId.toString() === userId.toString());
-            const userAnswers = await getAllAnswersByUserId(userId);
-
-            // 1. Delete all user's questions (this will also delete associated answers)
-            for (const question of userQuestions) {
-                await deleteQuestion(question._id.toString());
-            }
-
-            // 2. Delete any remaining answers by the user on other people's questions
-            for (const answer of userAnswers) {
-                await deleteAnswer(answer._id.toString());
-            }
-
-            // 3. Remove user's votes from remaining questions
-            const remainingQuestions = allQuestions.filter(q => q.userId.toString() !== userId.toString());
-            for (const question of remainingQuestions) {
-                if (question.upvotes || question.downvotes) {
-                    await updateQuestion(question._id.toString(), {
-                        upvotes: (question.upvotes || []).filter(id => id.toString() !== userId.toString()),
-                        downvotes: (question.downvotes || []).filter(id => id.toString() !== userId.toString())
-                    });
-                }
-            }
-
-            // 4. Remove user's votes from remaining answers
-            for (const question of remainingQuestions) {
-                const questionAnswers = await getAnswers(question._id.toString());
-                for (const answer of questionAnswers) {
-                    if ((answer.upvotes && answer.upvotes.includes(userId)) || 
-                        (answer.downvotes && answer.downvotes.includes(userId))) {
-                        await updateAnswer(answer._id.toString(), {
-                            upvotes: (answer.upvotes || []).filter(id => id.toString() !== userId.toString()),
-                            downvotes: (answer.downvotes || []).filter(id => id.toString() !== userId.toString())
-                        });
-                    }
-                }
-            }
-
-            // 5. Finally, delete the user's account
-            const deleteResult = await deleteUser(userId);
-            console.log('User deletion result:', deleteResult);
-            
-            // 6. Clear the session and redirect
-            req.session.destroy((err) => {
-                if (err) {
-                    console.error('Error destroying session:', err);
-                }
-                res.redirect('/');
-            });
-        } catch (deleteError) {
-            console.error('Error during deletion process:', deleteError);
+            // Get user first to verify they exist and get their ObjectId
+            console.log('[deleteAccountHandler] Fetching user from database with ID:', userId);
             const user = await getUserById(userId);
-            const answers = await getAllAnswersByUserId(userId);
-            const questions = await getQuestions();
-            const userQuestions = questions.filter(q => q.userId.toString() === userId.toString());
+            console.log('[deleteAccountHandler] Found user:', user ? {
+                _id: user._id.toString(),
+                username: user.username
+            } : 'null');
+
+            if (!user) {
+                return res.status(404).json({ message: 'User not found' });
+            }
+
+            // Get all user's questions and answers
+            const allQuestions = await getQuestions();
+            const userQuestions = allQuestions.filter(q => q.userId && q.userId.toString() === user._id.toString());
+            console.log(`[deleteAccountHandler] Found ${userQuestions.length} questions to delete`);
+
+            // Delete all user's questions (this will cascade delete their answers)
+            for (const question of userQuestions) {
+                if (question._id) {
+                    console.log('[deleteAccountHandler] Deleting question:', question._id.toString());
+                    await deleteQuestion(question._id.toString());
+                }
+            }
+
+            // Delete the user's answers on other questions
+            const userAnswers = await getAllAnswersByUserId(user._id.toString());
+            console.log(`[deleteAccountHandler] Found ${userAnswers.length} answers to delete`);
             
-            return res.render('users/profile', {
-                user,
-                answers,
-                questions: userQuestions,
-                userId,
-                error: 'Failed to delete account. Please try again.',
-                success: null
-            });
+            for (const answer of userAnswers) {
+                if (answer._id) {
+                    console.log('[deleteAccountHandler] Deleting answer:', answer._id.toString());
+                    await deleteAnswer(answer._id.toString());
+                }
+            }
+
+            // Finally, delete the user account using the correct ObjectId
+            console.log('[deleteAccountHandler] Attempting to delete user with ID:', user._id.toString());
+            await deleteUser(user._id.toString());
+            
+            res.json({ message: 'Account deleted successfully' });
+        } catch (error) {
+            console.error('[deleteAccountHandler] Error during deletion process:', error);
+            res.status(500).json({ message: 'Failed to delete account. Please try again.' });
         }
-    } catch (err) {
-        console.error('Error in deleteAccountHandler:', err);
-        res.redirect('/users/profile');
+    } catch (error) {
+        console.error('[deleteAccountHandler] Error in outer try block:', error);
+        res.status(500).json({ message: 'Failed to delete account' });
     }
 };
 

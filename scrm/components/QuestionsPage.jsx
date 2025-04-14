@@ -87,13 +87,14 @@ const QuestionsPage = () => {
   const [sortBy, setSortBy] = useState(queryParams.get('sort') || 'newest');
   const [currentPage, setCurrentPage] = useState(parseInt(queryParams.get('page')) || 1);
   const [selectedTag, setSelectedTag] = useState(queryParams.get('tag') || '');
+  const [showUnanswered, setShowUnanswered] = useState(queryParams.get('unanswered') === 'true');
 
   const questionsPerPage = 10;
 
   // Fetch questions
   const { data, isLoading, error } = useQuery({
-    queryKey: ['questions'],
-    queryFn: Api.getQuestions,
+    queryKey: ['questions', { unanswered: showUnanswered }],
+    queryFn: () => Api.getQuestions({ unanswered: showUnanswered }),
     retry: false
   });
 
@@ -166,8 +167,11 @@ const QuestionsPage = () => {
       
       // Add tag filtering
       const matchesTag = selectedTag ? question.tags?.includes(selectedTag) : true;
+
+      // Add unanswered filtering
+      const matchesUnanswered = showUnanswered ? (question.answerCount === 0 || !question.answerCount) : true;
       
-      return matchesSearch && matchesTag;
+      return matchesSearch && matchesTag && matchesUnanswered;
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -213,6 +217,7 @@ const QuestionsPage = () => {
   const handleSortChange = (newSortBy) => {
     setSortBy(newSortBy);
     setCurrentPage(1); // Reset to first page on sort change
+    setShowUnanswered(newSortBy === 'unanswered'); // Set unanswered filter based on sort selection
     setTimeout(updateURL, 0);
   };
 
@@ -271,7 +276,7 @@ const QuestionsPage = () => {
 
         {/* Search and filter section */}
         <div className="row mb-4">
-          <div className="col-md-8">
+          <div className="col-md-6">
             <div className="input-group">
               <span className="input-group-text bg-dark text-white border-secondary">
                 <i className="fas fa-search"></i>
@@ -285,7 +290,7 @@ const QuestionsPage = () => {
               />
             </div>
           </div>
-          <div className="col-md-4">
+          <div className="col-md-6">
             <select
               className="form-select bg-dark text-white border-secondary"
               value={sortBy}
@@ -295,6 +300,7 @@ const QuestionsPage = () => {
               <option value="oldest" className="text-white">Oldest</option>
               <option value="mostAnswers" className="text-white">Most Answers</option>
               <option value="mostVotes" className="text-white">Most Votes</option>
+              <option value="unanswered" className="text-white">Unanswered</option>
             </select>
           </div>
         </div>

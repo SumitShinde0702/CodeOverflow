@@ -55,8 +55,13 @@ const getAuthHeaders = (requireAuth = true) => {
 
 const Api = {
   // Public endpoints (no auth required)
-  getQuestions() {
-    return fetch(`${SERVER_PREFIX}/questions`, {
+  getQuestions(params = {}) {
+    const queryParams = new URLSearchParams();
+    if (params.unanswered) {
+      queryParams.append('unanswered', 'true');
+    }
+    
+    return fetch(`${SERVER_PREFIX}/questions?${queryParams.toString()}`, {
       headers: getAuthHeaders(false)
     }).then(handleResponse);
   },
@@ -198,11 +203,31 @@ const Api = {
     }
   },
 
-  deleteAccount() {
-    return fetch(`${SERVER_PREFIX}/users/delete-account`, {
-      headers: getAuthHeaders(true),
-      method: 'POST'
-    }).then(handleResponse);
+  deleteAccount: async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`${SERVER_PREFIX}/users/delete-account`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to delete account');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      throw error;
+    }
   },
 
   postQuestion(data) {

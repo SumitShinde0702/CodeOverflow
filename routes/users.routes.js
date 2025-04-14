@@ -32,7 +32,7 @@ router.get('/', getAllUsersHandler);
 router.get('/profile', requireAuthJWT, getUserHandler);
 router.post('/profile', requireAuthJWT, upload.single('profilePicture'), updateUserHandler);
 router.post('/password', requireAuthJWT, changePasswordHandler);
-router.post('/delete-account', requireAuthJWT, deleteAccountHandler);
+router.delete('/delete-account', requireAuthJWT, deleteAccountHandler);
 
 // Registration route with file upload
 router.post('/', upload.single('profilePicture'), (req, res, next) => {
